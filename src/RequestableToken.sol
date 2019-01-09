@@ -18,10 +18,10 @@
 pragma solidity ^0.4.23;
 
 import "ds-stop/stop.sol";
-import "./lib/Ownable.sol";
-import "./token.sol";
+import "ds-token/token.sol";
 
-import "./base.sol";
+import "./Ownable.sol";
+
 
 contract RQToken is DSToken, Ownable {
 
