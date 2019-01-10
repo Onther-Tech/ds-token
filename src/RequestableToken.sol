@@ -36,18 +36,8 @@ contract RQToken is DSToken, Ownable {
     mapping(uint => bool) appliedRequests;
 
     /* Events */
-    event Mint(address indexed guy, uint wad);
-    event Burn(address indexed guy, uint wad);
     event Request(bool _isExit, address indexed _requestor, bytes32 _trieKey, bytes32 _trieValue);
 
-
-    function approve(address guy) public stoppable returns (bool) {
-        return super.approve(guy, uint(-1));
-    }
-
-    function approve(address guy, uint wad) public stoppable returns (bool) {
-        return super.approve(guy, wad);
-    }
 
     // User can get the trie key of one's balance and make an enter request directly.
     function getBalanceTrieKey(address who) public pure returns (bytes32) {
