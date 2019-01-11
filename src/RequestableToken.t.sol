@@ -19,7 +19,7 @@ pragma solidity ^0.4.23;
 
 import "../ds-test/test.sol";
 
-import "./requestable.sol";
+import "./Requestable.sol";
 
 contract TokenUser {
     RQToken  token;
