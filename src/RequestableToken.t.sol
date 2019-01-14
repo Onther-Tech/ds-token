@@ -95,6 +95,27 @@ contract TokenUser {
 
 }
 
+contract RequestTest is DSTest {
+    RQToken token;
+    address owner;
+    address nextOwner;
+    address holder;
+    address other;
+
+    address trieValue = owner;
+    uint trieKey = "0x00";
+
+    uint tokenAmount = 1e18;
+
+    function testEnter() public {
+        bool isExit = false;
+
+        assertEq(token.applyRequestInRootChain(isExit, 0, other, trieKey, trieValue), false);
+        assertEq(token.applyRequestInRootChain(isExit, 0, owner, trieKey, trieValue), true);
+    }
+
+}
+
 contract RQTokenTest is DSTest {
     uint constant initialBalance = 1000;
 
