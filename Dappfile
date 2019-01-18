@@ -1,7 +1,7 @@
-name            ds-token
-description     ERC20 implementation with minting and burning
+name            requestable-ds-token
+description     Requestable token implementing ds-token
 version         K99
 
-author          Nikolai Mushegian <nikolai@nexusdev.us>
-author          Daniel Brockman <daniel@brockman.se>
+author          Jason Hwang <jason.h@onther.io>
+author          Carl Park <carl.p@onther.io>
 license         Apache-2.0
