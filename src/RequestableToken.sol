@@ -24,7 +24,7 @@ import "./RequestableI.sol";
 
 /**
  * @notice RequestableToken implements requestable token inheriting DSToken.
- *         Storage layout is as follows
+ *         Storage layout is as follows (requestable state is annotated with *)
  *         [0]: DSAuth.authority
  *         [1]: * DSAuth.onwer
  *         [2]: * DSStop.stopped
