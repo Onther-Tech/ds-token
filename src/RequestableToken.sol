@@ -15,33 +15,42 @@
 // You should have received a copy of the GNU General Public License
 // along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-pragma solidity ^0.4.23;
+pragma solidity ^0.4.24;
 
 import "ds-stop/stop.sol";
 import "ds-token/token.sol";
+import "./RequestableI.sol";
 
-import "./Ownable.sol";
 
+/**
+ * @notice RQToken implements requestable token inheriting DSToken.
+ *         Storage layout is as follows
+ *         [0]: DSAuth.authority
+ *         [1]: * DSAuth.onwer
+ *         [2]: * DSStop.stopped
+ *         [3]: DSTokenBase._supply
+ *         [4]: * DSTokenBase._balances
+ *         [5]: DSTokenBase._approvals
+ *         [6]: DSToken.symbol
+ *         [7]: DSToken.decimals
+ *         [8]: DSToken.name
+ *         [9]: RQToken.rootchain
+ *         [10]: RQToken.appliedRequests
+ */
+contract RQToken is DSToken, RequestableI {
 
-contract RQToken is DSToken, Ownable {
-
-    bytes32  public  symbol;
-    uint256  public  decimals = 18; // standard token precision. override to customize
-
-    function RQToken(bytes32 symbol_) DSToken(symbol_) public {
-        symbol = symbol_;
-    }
-
-    // requests
-    mapping(uint => bool) appliedRequests;
+    address public rootchain;
+    mapping(uint => bool) public appliedRequests;
 
     /* Events */
     event Request(bool _isExit, address indexed _requestor, bytes32 _trieKey, bytes32 _trieValue);
 
+    constructor (bytes32 symbol_, address rootchain_) DSToken(symbol_) public {
+        rootchain = rootchain_;
+    }
 
-    // User can get the trie key of one's balance and make an enter request directly.
     function getBalanceTrieKey(address who) public pure returns (bytes32) {
-        return keccak256(bytes32(who), bytes32(2));
+        return keccak256(abi.encodePacked(bytes32(who), bytes32(4)));
     }
 
     function applyRequestInRootChain(
@@ -57,48 +66,14 @@ contract RQToken is DSToken, Ownable {
 
         require(!appliedRequests[requestId]);
 
-        if (isExit) {
-            // exit must be finalized.
-            // TODO: adpot RootChain
-            // require(rootchain.getExitFinalized(requestId));
-
-            if(bytes32(0) == trieKey) {
-                // only owner (in child chain) can exit `owner` variable.
-                // but it is checked in applyRequestInChildChain and exitChallenge.
-
-                // set requestor as owner in root chain.
-                owner = requestor;
-            } else if(bytes32(1) == trieKey) {
-                // no one can exit `totalSupply` variable.
-                // but do nothing to return true.
-            } else if (keccak256(bytes32(requestor), bytes32(2)) == trieKey) {
-                // this checks trie key equals to `balances[requestor]`.
-                // only token holder can exit one's token.
-                // exiting means moving tokens from child chain to root chain.
-                _balances[requestor] += uint(trieValue);
-            } else {
-                // cannot exit other variables.
-                // but do nothing to return true.
-            }
+        if (trieKey == bytes32(1)) {
+            _handleOwner(true, isExit, requestor, trieKey, trieValue);
+        } else if (trieKey == bytes32(2)) {
+            _handleStopped(true, isExit, requestor, trieKey, trieValue);
+        } else if (trieKey == getBalanceTrieKey(requestor)) {
+            _handleBalance(true, isExit, requestor, trieKey, trieValue);
         } else {
-            // apply enter
-            if(bytes32(0) == trieKey) {
-                // only owner (in root chain) can enter `owner` variable.
-                require(owner == requestor);
-                // do nothing in root chain
-            } else if(bytes32(1) == trieKey) {
-                // no one can enter `totalSupply` variable.
-                revert();
-            } else if (keccak256(bytes32(requestor), bytes32(2)) == trieKey) {
-                // this checks trie key equals to `balances[requestor]`.
-                // only token holder can enter one's token.
-                // entering means moving tokens from root chain to child chain.
-                require(_balances[requestor] >= uint(trieValue));
-                _balances[requestor] -= uint(trieValue);
-            } else {
-                // cannot apply request on other variables.
-                revert();
-            }
+            revert();
         }
 
         appliedRequests[requestId] = true;
@@ -124,44 +99,14 @@ contract RQToken is DSToken, Ownable {
         // require(msg.sender == NULL_ADDRESS);
         require(!appliedRequests[requestId]);
 
-        if (isExit) {
-            if(bytes32(0) == trieKey) {
-                // only owner (in child chain) can exit `owner` variable.
-                require(requestor == owner);
-
-                // do nothing when exit `owner` in child chain
-            } else if(bytes32(1) == trieKey) {
-                // no one can exit `totalSupply` variable.
-                revert();
-            } else if (keccak256(bytes32(requestor), bytes32(2)) == trieKey) {
-                // this checks trie key equals to `balances[tokenHolder]`.
-                // only token holder can exit one's token.
-                // exiting means moving tokens from child chain to root chain.
-
-                // revert provides a proof for `exitChallenge`.
-                require(_balances[requestor] >= uint(trieValue));
-
-                _balances[requestor] -= uint(trieValue);
-            } else { // cannot exit other variables.
-                revert();
-            }
-        } else { // apply enter
-            if(bytes32(0) == trieKey) {
-                // only owner (in root chain) can make enterRequest of `owner` variable.
-                // but it is checked in applyRequestInRootChain.
-
-                owner = requestor;
-            } else if(bytes32(1) == trieKey) {
-                // no one can enter `totalSupply` variable.
-            } else if (keccak256(bytes32(requestor), bytes32(2)) == trieKey) {
-                // this checks trie key equals to `balances[tokenHolder]`.
-                // only token holder can enter one's token.
-                // entering means moving tokens from root chain to child chain.
-                _balances[requestor] += uint(trieValue);
-            } else {
-                // cannot apply request on other variables.
-                revert();
-            }
+        if (trieKey == bytes32(1)) {
+            _handleOwner(false, isExit, requestor, trieKey, trieValue);
+        } else if (trieKey == bytes32(2)) {
+            _handleStopped(false, isExit, requestor, trieKey, trieValue);
+        } else if (trieKey == getBalanceTrieKey(requestor)) {
+            _handleBalance(false, isExit, requestor, trieKey, trieValue);
+        } else {
+            revert();
         }
 
         appliedRequests[requestId] = true;
@@ -170,5 +115,81 @@ contract RQToken is DSToken, Ownable {
         return true;
     }
 
+    function _handleOwner(
+        bool isRootChain,
+        bool isExit,
+        address requestor,
+        bytes32 trieKey,
+        bytes32 trieValue
+    ) internal {
+        address newOwner = address(trieValue);
 
+        if (isRootChain) {
+            if (isExit) {
+                owner = newOwner;
+            } else {
+                require(owner == requestor);
+                require(owner == newOwner);
+            }
+        } else {
+            if (isExit) {
+                require(owner == requestor);
+                require(owner == newOwner);
+            } else {
+                owner = newOwner;
+            }
+        }
+    }
+
+    function _handleStopped(
+        bool isRootChain,
+        bool isExit,
+        address requestor,
+        bytes32 trieKey,
+        bytes32 trieValue
+    ) internal {
+        bool newStopped = trieValue == 0x01;
+
+        if (isRootChain) {
+            if (isExit) {
+                stopped = newStopped;
+            } else {
+                require(isAuthorized(requestor, bytes4(keccak256("stop()"))));
+            }
+        } else {
+            if (isExit) {
+                require(isAuthorized(requestor, bytes4(keccak256("stop()"))));
+            } else {
+                stopped = newStopped;
+            }
+        }
+    }
+
+    function _handleBalance(
+        bool isRootChain,
+        bool isExit,
+        address requestor,
+        bytes32 trieKey,
+        bytes32 trieValue
+    ) internal {
+        uint amount = uint(trieValue);
+
+        if (isRootChain) {
+            if (isExit) {
+                _balances[requestor] = add(_balances[requestor], amount);
+                _balances[this] = sub(_balances[this], amount);
+            } else {
+                require(amount <= _balances[requestor]);
+                _balances[requestor] = sub(_balances[requestor], amount);
+                _balances[this] = add(_balances[this], amount);
+            }
+        } else {
+            if (isExit) {
+                require(amount <= _balances[requestor]);
+                _balances[requestor] = sub(_balances[requestor], amount);
+            } else {
+                _balances[requestor] = add(_balances[requestor], amount);
+            }
+        }
+    }
 }

@@ -1,7 +1,7 @@
 
 pragma solidity ^0.4.24;
 
-interface RequestableContractI {
+interface RequestableI {
     function applyRequestInRootChain(
         bool isExit,
         uint256 requestId,
