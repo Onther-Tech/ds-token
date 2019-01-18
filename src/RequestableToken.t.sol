@@ -18,9 +18,16 @@
 pragma solidity ^0.4.24;
 
 import "ds-test/test.sol";
-import {TokenUser} from "ds-token/token.t.sol";
 
 import "./RequestableToken.sol";
+
+contract TokenUser {
+    RequestableToken token;
+
+    constructor(RequestableToken token_) public {
+        token = token_;
+    }
+}
 
 contract OwnerUser {
     function setOwner(DSAuth auth_, address newOwner_) public {
@@ -28,10 +35,10 @@ contract OwnerUser {
     }
 }
 
-contract RQTokenTest is DSTest {
+contract RequestableTokenTest is DSTest {
     uint constant initialBalance = 1000;
 
-    RQToken token;
+    RequestableToken token;
 
     OwnerUser ownerUser;
     TokenUser tokenUser1;
@@ -45,8 +52,8 @@ contract RQTokenTest is DSTest {
         tokenUser2 = new TokenUser(token);
     }
 
-    function createToken() internal returns (RQToken) {
-        return new RQToken("TST", this);
+    function createToken() internal returns (RequestableToken) {
+        return new RequestableToken("TST", this);
     }
 
     function testApplyOwner() public {

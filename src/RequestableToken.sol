@@ -23,7 +23,7 @@ import "./RequestableI.sol";
 
 
 /**
- * @notice RQToken implements requestable token inheriting DSToken.
+ * @notice RequestableToken implements requestable token inheriting DSToken.
  *         Storage layout is as follows
  *         [0]: DSAuth.authority
  *         [1]: * DSAuth.onwer
@@ -34,10 +34,10 @@ import "./RequestableI.sol";
  *         [6]: DSToken.symbol
  *         [7]: DSToken.decimals
  *         [8]: DSToken.name
- *         [9]: RQToken.rootchain
- *         [10]: RQToken.appliedRequests
+ *         [9]: RequestableToken.rootchain
+ *         [10]: RequestableToken.appliedRequests
  */
-contract RQToken is DSToken, RequestableI {
+contract RequestableToken is DSToken, RequestableI {
 
     address public rootchain;
     mapping(uint => bool) public appliedRequests;
