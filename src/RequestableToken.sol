@@ -177,11 +177,9 @@ contract RequestableToken is DSToken, RequestableI {
         if (isRootChain) {
             if (isExit) {
                 _balances[requestor] = add(_balances[requestor], amount);
-                _balances[this] = sub(_balances[this], amount);
             } else {
                 require(amount <= _balances[requestor]);
                 _balances[requestor] = sub(_balances[requestor], amount);
-                _balances[this] = add(_balances[this], amount);
             }
         } else {
             if (isExit) {
