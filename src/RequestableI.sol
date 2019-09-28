@@ -7,7 +7,7 @@ interface RequestableI {
         uint256 requestId,
         address requestor,
         bytes32 trieKey,
-        bytes32 trieValue
+        bytes trieValue
     ) external returns (bool success);
 
     function applyRequestInChildChain(
@@ -15,7 +15,7 @@ interface RequestableI {
         uint256 requestId,
         address requestor,
         bytes32 trieKey,
-        bytes32 trieValue
+        bytes trieValue
     ) external returns (bool success);
 
 }
