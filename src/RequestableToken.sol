@@ -40,12 +40,13 @@ import "./RequestableI.sol";
 contract RequestableToken is DSToken, RequestableI {
 
     address public rootchain;
-    mapping(uint => bool) public appliedRequests;
+    bool public development;
 
     /* Events */
-    event Request(bool _isExit, address indexed _requestor, bytes32 _trieKey, bytes32 _trieValue);
+    event Request(bool _isExit, address indexed _requestor, bytes32 _trieKey, uint _value);
 
-    constructor (bytes32 symbol_, address rootchain_) DSToken(symbol_) public {
+    constructor (bool _development, bytes32 symbol_, address rootchain_) DSToken(symbol_) public {
+        development = _development;
         rootchain = rootchain_;
     }
 
@@ -58,61 +59,61 @@ contract RequestableToken is DSToken, RequestableI {
         uint256 requestId,
         address requestor,
         bytes32 trieKey,
-        bytes32 trieValue
-    ) public returns (bool success) {
-        // TODO: adpot RootChain
-        // require(msg.sender == address(rootchain));
-        // require(!getRequestApplied(requestId)); // check double applying
+        bytes trieValue
+    ) external returns (bool success) {
+        require(msg.sender == address(rootchain));
+        // require(trieKey == getBalanceTrieKey(requestor));
 
-        require(!appliedRequests[requestId]);
+        uint v = decodeTrieValue(trieValue);
 
         if (trieKey == bytes32(1)) {
-            _handleOwner(true, isExit, requestor, trieKey, trieValue);
+            _handleOwner(true, isExit, requestor, trieKey, v);
         } else if (trieKey == bytes32(2)) {
-            _handleStopped(true, isExit, requestor, trieKey, trieValue);
+            _handleStopped(true, isExit, requestor, trieKey, v);
         } else if (trieKey == getBalanceTrieKey(requestor)) {
-            _handleBalance(true, isExit, requestor, trieKey, trieValue);
+            _handleBalance(true, isExit, requestor, trieKey, v);
         } else {
             revert();
         }
 
-        appliedRequests[requestId] = true;
+        emit Request(isExit, requestor, trieKey, v);
 
-        emit Request(isExit, requestor, trieKey, trieValue);
-
-        // TODO: adpot RootChain
-        // setRequestApplied(requestId);
         return true;
     }
 
-    // this is only called by NULL_ADDRESS in child chain
-    // when i) exitRequest is initialized by startExit() or
-    //     ii) enterRequest is initialized
     function applyRequestInChildChain(
         bool isExit,
         uint256 requestId,
         address requestor,
         bytes32 trieKey,
-        bytes32 trieValue
+        bytes trieValue
     ) external returns (bool success) {
-        // TODO: adpot child chain
-        // require(msg.sender == NULL_ADDRESS);
-        require(!appliedRequests[requestId]);
+        require(development || msg.sender == address(0));
+        // require(trieKey == getBalanceTrieKey(requestor));
+
+        uint v = decodeTrieValue(trieValue);
 
         if (trieKey == bytes32(1)) {
-            _handleOwner(false, isExit, requestor, trieKey, trieValue);
+            _handleOwner(false, isExit, requestor, trieKey, v);
         } else if (trieKey == bytes32(2)) {
-            _handleStopped(false, isExit, requestor, trieKey, trieValue);
+            _handleStopped(false, isExit, requestor, trieKey, v);
         } else if (trieKey == getBalanceTrieKey(requestor)) {
-            _handleBalance(false, isExit, requestor, trieKey, trieValue);
+            _handleBalance(false, isExit, requestor, trieKey, v);
         } else {
             revert();
         }
 
-        appliedRequests[requestId] = true;
+        emit Request(isExit, requestor, trieKey, v);
 
-        emit Request(isExit, requestor, trieKey, trieValue);
         return true;
+    }
+
+    function decodeTrieValue(bytes memory trieValue) public pure returns (uint v) {
+        require(trieValue.length == 0x20);
+
+        assembly {
+            v := mload(add(trieValue, 0x20))
+        }
     }
 
     function _handleOwner(
@@ -120,9 +121,9 @@ contract RequestableToken is DSToken, RequestableI {
         bool isExit,
         address requestor,
         bytes32 trieKey,
-        bytes32 trieValue
+        uint v
     ) internal {
-        address newOwner = address(trieValue);
+        address newOwner = address(v);
 
         if (isRootChain) {
             if (isExit) {
@@ -146,9 +147,9 @@ contract RequestableToken is DSToken, RequestableI {
         bool isExit,
         address requestor,
         bytes32 trieKey,
-        bytes32 trieValue
+        uint v
     ) internal {
-        bool newStopped = trieValue == 0x01;
+        bool newStopped = v == 0x1;
 
         if (isRootChain) {
             if (isExit) {
@@ -170,9 +171,9 @@ contract RequestableToken is DSToken, RequestableI {
         bool isExit,
         address requestor,
         bytes32 trieKey,
-        bytes32 trieValue
+        uint amount
     ) internal {
-        uint amount = uint(trieValue);
+        /* uint amount = uint(trieValue); */
 
         if (isRootChain) {
             if (isExit) {

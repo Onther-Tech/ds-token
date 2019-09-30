@@ -53,19 +53,30 @@ contract RequestableTokenTest is DSTest {
     }
 
     function createToken() internal returns (RequestableToken) {
-        return new RequestableToken("TST", this);
+        return new RequestableToken(true, 'TST', this);
+    }
+
+    function toBytesUint(uint256 x) public returns (bytes b) {
+        b = new bytes(32);
+        assembly { mstore(add(b, 32), x) }
+    }
+
+    function toBytesAddress(address x) public returns (bytes b) {
+        b = new bytes(32);
+        assembly { mstore(add(b, 32), x) }
     }
 
     function testApplyOwner() public {
         bool isExit = true;
         uint requestId = 0;
         bytes32 trieKey = 0x1;
-        bytes32 trieValue = bytes32(address(ownerUser));
+        bytes memory trieValue;
 
         // initial
         assertEq(token.owner(), this);
 
         // exit in root chain
+        trieValue = toBytesAddress(ownerUser);
         token.applyRequestInRootChain(isExit, requestId, this, trieKey, trieValue);
         assertEq(token.owner(), address(ownerUser));
 
@@ -76,21 +87,21 @@ contract RequestableTokenTest is DSTest {
         // enter in root chain
         isExit = false;
         requestId += 1;
-        trieValue = bytes32(address(this));
+        trieValue = toBytesAddress(this);
         token.applyRequestInRootChain(isExit, requestId, this, trieKey, trieValue);
         assertEq(token.owner(), this);
 
         // exit in child chain
         isExit = true;
         requestId += 1;
-        trieValue = bytes32(address(this));
+        trieValue = toBytesAddress(this);
         token.applyRequestInChildChain(isExit, requestId, this, trieKey, trieValue);
         assertEq(token.owner(), this);
 
         // enter in child chain
         isExit = false;
         requestId += 1;
-        trieValue = bytes32(address(ownerUser));
+        trieValue = toBytesAddress(ownerUser);
         token.applyRequestInChildChain(isExit, requestId, this, trieKey, trieValue);
         assertEq(token.owner(), address(ownerUser));
 
@@ -106,34 +117,34 @@ contract RequestableTokenTest is DSTest {
         bool isExit = true;
         uint requestId = 0;
         bytes32 trieKey = 0x2;
-        bytes32 trieValue;
+        bytes memory trieValue;
 
         // initial
         assertTrue(token.stopped() == notStopped);
 
         // exit in root chain
-        trieValue = 0x01;
+        trieValue = toBytesUint(0x1);
         token.applyRequestInRootChain(isExit, requestId, this, trieKey, trieValue);
         assertTrue(token.stopped() == stopped);
 
         // enter in root chain
         isExit = false;
         requestId += 1;
-        trieValue = 0x01;
+        trieValue = toBytesUint(0x1);
         token.applyRequestInRootChain(isExit, requestId, this, trieKey, trieValue);
         assertTrue(token.stopped() == stopped);
 
         // exit in child chain
         isExit = true;
         requestId += 1;
-        trieValue = 0x01;
+        trieValue = toBytesUint(0x1);
         token.applyRequestInChildChain(isExit, requestId, this, trieKey, trieValue);
         assertTrue(token.stopped() == stopped);
 
         // enter in child chain
         isExit = false;
         requestId += 1;
-        trieValue = 0x00;
+        trieValue = toBytesUint(0x0);
         token.applyRequestInChildChain(isExit, requestId, this, trieKey, trieValue);
         assertTrue(token.stopped() == notStopped);
     }
@@ -144,7 +155,7 @@ contract RequestableTokenTest is DSTest {
         uint requestId;
         address requestor = address(tokenUser1);
         bytes32 trieKey = token.getBalanceTrieKey(tokenUser1);
-        bytes32 trieValue;
+        bytes memory trieValue;
 
         // initial
         token.push(tokenUser1, 100);
@@ -153,28 +164,28 @@ contract RequestableTokenTest is DSTest {
         // enter in root chain
         isExit = false;
         requestId += 1;
-        trieValue = bytes32(10);
+        trieValue = toBytesUint(10);
         token.applyRequestInRootChain(isExit, requestId, requestor, trieKey, trieValue);
         assertEq(token.balanceOf(tokenUser1), 90);
 
         // exit in root chain
         isExit = true;
         requestId += 1;
-        trieValue = bytes32(10);
+        trieValue = toBytesUint(10);
         token.applyRequestInRootChain(isExit, requestId, requestor, trieKey, trieValue);
         assertEq(token.balanceOf(tokenUser1), 100);
 
         // exit in child chain
         isExit = true;
         requestId += 1;
-        trieValue = bytes32(10);
+        trieValue = toBytesUint(10);
         token.applyRequestInChildChain(isExit, requestId, requestor, trieKey, trieValue);
         assertEq(token.balanceOf(tokenUser1), 90);
 
         // enter in child chain
         isExit = false;
         requestId += 1;
-        trieValue = bytes32(10);
+        trieValue = toBytesUint(10);
         token.applyRequestInChildChain(isExit, requestId, requestor, trieKey, trieValue);
         assertEq(token.balanceOf(tokenUser1), 100);
     }
